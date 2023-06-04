@@ -517,6 +517,7 @@ func main() {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	app := fiber.New()
+	app.Static("/", "static")
 
 	// Allow all origins and methods
 	app.Use(cors.New(cors.Config{
