@@ -6,7 +6,7 @@ WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend .
-COPY backend/lcr_webapp.json .
+# COPY backend/lcr_webapp.json .
 
 RUN go build -o backend
 EXPOSE 3000
