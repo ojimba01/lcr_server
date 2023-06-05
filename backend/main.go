@@ -4,8 +4,11 @@ package main
 import (
 	"backend/lcr"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/redis/go-redis/v9"
 
 	"log"
 	"math/rand"
@@ -492,9 +495,41 @@ func AuthRequired() func(*fiber.Ctx) error {
 
 var LCRGames = make(map[string]*lcr.LCRGame)
 
+type FirebaseCredentials struct {
+	Type                    string `json:"type"`
+	ProjectID               string `json:"project_id"`
+	PrivateKeyID            string `json:"private_key_id"`
+	PrivateKey              string `json:"private_key"`
+	ClientEmail             string `json:"client_email"`
+	ClientID                string `json:"client_id"`
+	AuthURI                 string `json:"auth_uri"`
+	TokenURI                string `json:"token_uri"`
+	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
+	ClientX509CertURL       string `json:"client_x509_cert_url"`
+}
+
 func main() {
-	opt := option.WithCredentialsFile("lcr_webapp.json")
-	var err error
+	// Establish a connection to Redis
+	redclient := redis.NewClient(&redis.Options{
+		Addr:     "redis://default:Eco5zbw82Ic5sLXRa4HQ@containers-us-west-162.railway.app:6137",
+		Password: "Eco5zbw82Ic5sLXRa4HQ", // If your Redis server requires authentication, provide the password here
+		DB:       0,                      // Use the default database
+	})
+
+	// Retrieve the value of the "firebase" key
+	val, err := redclient.Get(context.Background(), "firebase").Result()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Convert the JSON string into a JSON object
+	var credentials FirebaseCredentials
+	err = json.Unmarshal([]byte(val), &credentials)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Create Firebase options with the retrieved credentials
+	opt := option.WithCredentialsJSON([]byte(val))
 
 	// Initialize the Firebase App
 	fbApp, err = firebase.NewApp(context.Background(), nil, opt)
