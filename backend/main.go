@@ -4,11 +4,12 @@ package main
 import (
 	"backend/lcr"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/redis/go-redis/v9"
+	_ "github.com/lib/pq"
 
 	"log"
 	"math/rand"
@@ -23,7 +24,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-var fbApp *firebase.App
+// var fbApp *firebase.App
 var client *auth.Client
 
 type Player struct {
@@ -508,35 +509,44 @@ type FirebaseCredentials struct {
 	ClientX509CertURL       string `json:"client_x509_cert_url"`
 }
 
+var (
+	credentials FirebaseCredentials
+)
+
 func main() {
-	// Establish a connection to Redis
-	redclient := redis.NewClient(&redis.Options{
-		Addr:     "redis://default:Eco5zbw82Ic5sLXRa4HQ@containers-us-west-162.railway.app:6137",
-		Password: "Eco5zbw82Ic5sLXRa4HQ", // If your Redis server requires authentication, provide the password here
-		DB:       0,                      // Use the default database
-	})
-
-	// Retrieve the value of the "firebase" key
-	val, err := redclient.Get(context.Background(), "firebase").Result()
+	db, err := sql.Open("postgres", "postgresql://postgres:pYv5xkt4Oh9c9wDWQ5yf@containers-us-west-111.railway.app:6862/railway")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+	}
+	defer db.Close()
+
+	// Retrieve the Firebase credentials from the database
+	var jsonVal []byte
+	err = db.QueryRow("SELECT firebase FROM credentials").Scan(&jsonVal)
+	if err != nil {
+		log.Fatalf("Failed to retrieve Firebase credentials: %v", err)
 	}
 
-	// Convert the JSON string into a JSON object
-	var credentials FirebaseCredentials
-	err = json.Unmarshal([]byte(val), &credentials)
+	// Convert the JSON string into the FirebaseCredentials struct
+	err = json.Unmarshal(jsonVal, &credentials)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to unmarshal Firebase credentials: %v", err)
 	}
+
+	// Convert the FirebaseCredentials struct back into a JSON object
+	optBytes, err := json.Marshal(credentials)
+	if err != nil {
+		log.Fatalf("Failed to marshal Firebase credentials: %v", err)
+	}
+
 	// Create Firebase options with the retrieved credentials
-	opt := option.WithCredentialsJSON([]byte(val))
+	opt := option.WithCredentialsJSON(optBytes)
 
 	// Initialize the Firebase App
-	fbApp, err = firebase.NewApp(context.Background(), nil, opt)
+	fbApp, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		log.Fatalf("Failed to initialize Firebase app: %v", err)
 	}
-
 	// Initialize the Firebase Auth client
 	client, err = fbApp.Auth(context.Background())
 	if err != nil {
