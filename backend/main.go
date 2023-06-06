@@ -522,7 +522,7 @@ func main() {
 		log.Fatalf("Failed to get POSTGRES_PASSWORD environment variable")
 	}
 
-	db, err := sql.Open("postgres", "postgresql://postgres:pYv5xkt4Oh9c9wDWQ5yf@containers-us-west-111.railway.app:6862/railway")
+	db, err := sql.Open("postgres", fmt.Sprintf("postgresql://postgres:%s@containers-us-west-111.railway.app:6862/railway", postgresPassword))
 	if err != nil {
 		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
 	}
