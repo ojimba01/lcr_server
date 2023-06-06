@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -514,6 +515,13 @@ var (
 )
 
 func main() {
+	// Connect to the PostgreSQL database
+	// Use environment variables to get postgress password.
+	var postgresPassword string
+	if postgresPassword = os.Getenv("POSTGRES_PASSWORD"); postgresPassword == "" {
+		log.Fatalf("Failed to get POSTGRES_PASSWORD environment variable")
+	}
+
 	db, err := sql.Open("postgres", "postgresql://postgres:pYv5xkt4Oh9c9wDWQ5yf@containers-us-west-111.railway.app:6862/railway")
 	if err != nil {
 		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
