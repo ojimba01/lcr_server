@@ -16,6 +16,8 @@ import (
 	"math/rand"
 	"time"
 
+	// "github.com/joho/godotenv"
+
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/db"
@@ -361,6 +363,103 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	return c.JSON(game)
 }
 
+// 3XW4LgX0jMeo6mwTU9NrE0a2rYN2
+
+func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
+	lobbyCode := c.Params("lobbyCode")
+
+	// Generate a random number of bots between 2 and 4
+	numBots := rand.Intn(3) + 2
+
+	// Find game with the given lobby code
+	gamesRef := dbClient.NewRef("games")
+	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
+	results, err := query.GetOrdered(context.Background())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to query games from Firebase RTDB :( " + err.Error(),
+		})
+	}
+
+	if len(results) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Game not found",
+		})
+	}
+
+	gameKey := results[0].Key()
+	gameSnapshot := gamesRef.Child(gameKey)
+	var game Game
+	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve game from Firebase RTDB" + err.Error(),
+		})
+	}
+
+	// Add the new bots to the game
+	for i := 0; i < numBots; i++ {
+		botName := fmt.Sprintf("Bot %d", len(game.Players)+1)
+		bot := NewPlayer(botName)
+		bot.UserID = "3XW4LgX0jMeo6mwTU9NrE0a2rYN2"
+		game.Players = append(game.Players, bot)
+	}
+
+	// Save the game with the new bots back to Firebase RTDB
+	if err := gameSnapshot.Set(context.Background(), &game); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to save updated game to Firebase RTDB",
+		})
+	}
+
+	return c.JSON(game)
+}
+
+func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
+	// this function needs to take the
+	// lobby code and set all the bots to ready
+	// then return the game
+	lobbyCode := c.Params("lobbyCode")
+
+	// Find game with the given lobby code
+	gamesRef := dbClient.NewRef("games")
+	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
+	results, err := query.GetOrdered(context.Background())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to query games from Firebase RTDB :( " + err.Error(),
+		})
+	}
+
+	if len(results) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Game not found",
+		})
+	}
+
+	gameKey := results[0].Key()
+	gameSnapshot := gamesRef.Child(gameKey)
+	var game Game
+	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve game from Firebase RTDB" + err.Error(),
+		})
+	}
+
+	// Set everyone to ready
+	for _, player := range game.Players {
+		player.LobbyStatus = true
+	}
+
+	// Save the game with the new bots back to Firebase RTDB
+	if err := gameSnapshot.Set(context.Background(), &game); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to save updated game to Firebase RTDB",
+		})
+	}
+
+	return c.JSON(game)
+}
+
 func takeTurn(c *fiber.Ctx, dbClient *db.Client) error {
 	gameID := c.Params("gameID")
 	gameRef := dbClient.NewRef("games/" + gameID)
@@ -515,6 +614,12 @@ var (
 )
 
 func main() {
+	// Load environment variables from .env file
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatalf("Failed to load environment variables: %v", err)
+	// }
+
 	// Connect to the PostgreSQL database
 	// Use environment variables to get postgress password.
 	var postgresPassword string
@@ -678,6 +783,25 @@ func main() {
 		err := takeTurn(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for taking a turn in game:", c.Params("gameID"), "completed in", elapsed)
+		return err
+	})
+
+	app.Post("/games/:lobbyCode/addBots", func(c *fiber.Ctx) error {
+		fmt.Println("Received POST request for adding bots to game:", c.Params("lobbyCode"))
+		start := time.Now()
+		err := addBotsToGame(c, dbClient)
+		elapsed := time.Since(start)
+		fmt.Println("POST request for adding bots to game:", c.Params("lobbyCode"), "completed in", elapsed)
+		return err
+	})
+
+	// create the set bots to ready endpoint
+	app.Post("/games/:lobbyCode/setBotsReady", func(c *fiber.Ctx) error {
+		fmt.Println("Received POST request for setting bots to ready in game:", c.Params("lobbyCode"))
+		start := time.Now()
+		err := setBotsReady(c, dbClient)
+		elapsed := time.Since(start)
+		fmt.Println("POST request for setting bots to ready in game:", c.Params("lobbyCode"), "completed in", elapsed)
 		return err
 	})
 
