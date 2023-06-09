@@ -54,8 +54,7 @@ definitions:
     type: object
   main.ErrorResponse:
     properties:
-      error:
-        type: string
+      error: {}
     type: object
   main.Game:
     properties:

@@ -643,9 +643,7 @@ const docTemplate = `{
         "main.ErrorResponse": {
             "type": "object",
             "properties": {
-                "error": {
-                    "type": "string"
-                }
+                "error": {}
             }
         },
         "main.Game": {
