@@ -15,7 +15,7 @@ The backend project consists of the following main directories and files:
 - `static`: This directory contains static files that the server might need to serve.
 - `backend`: This directory contains additional backend resources.
 - `go.mod` & `go.sum`: These files are used by Go's dependency management system.
-- `main.go`: This is the main entry point for the backend server.
+- `main.go`: This is the main entry point for the GoFiber server.
 
 ## Local Development
 
