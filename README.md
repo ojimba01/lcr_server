@@ -1,4 +1,4 @@
-# LCR_Server Backend
+# LCR Backend
 
 This repository contains the backend code for the LCR_Server project.
 
