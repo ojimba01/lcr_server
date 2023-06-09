@@ -2,6 +2,10 @@
 
 This repository contains the backend code for the LCR_Server project.
 
+## Description
+
+`lcr_server` is a backend project aimed at providing a RESTful API for interacting with the LCR (Left, Center, Right) game. The project is built using Golang, Firebase SDK, Postgres, and other frameworks/libraries, ensuring a fast and efficient backend service that can handle concurrent requests.
+
 ## Project Structure
 
 The backend project consists of the following main directories and files:
