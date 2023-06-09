@@ -16,20 +16,27 @@ import (
 	"math/rand"
 	"time"
 
-	// "github.com/joho/godotenv"
+	// "github.com/joho/godotenv" // Keep commented out for Railway deployment
+
+	_ "backend/docs"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/db"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
 
+	// swagger handler
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"google.golang.org/api/option"
 )
 
-// var fbApp *firebase.App
+// @Description LCR Game API
+
+// client represents a Firebase auth client
 var client *auth.Client
 
+// Player represents a game player
 type Player struct {
 	Name        string `json:"Name"`
 	Chips       int    `json:"Chips"`
@@ -37,6 +44,7 @@ type Player struct {
 	UserID      string `json:"UserID,omitempty"`
 }
 
+// Game represents a game instance
 type Game struct {
 	Players   []*Player    `json:"Players"`
 	Creator   *Player      `json:"Creator,omitempty"`
@@ -50,16 +58,59 @@ type Game struct {
 	LCRGame   *lcr.LCRGame `json:"LCRGame,omitempty"`
 	GameID    string       `json:"gameID,omitempty"`
 }
+
+// LoginData represents user login information
 type LoginData struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+// Dice represents a dice
 type Dice struct {
 	Sides int   `json:"Sides"`
 	Rolls []int `json:"Rolls,omitempty"`
 }
 
+// GetAvailableGamesResponse represents the response structure for the available games endpoint
+type GetAvailableGamesResponse struct {
+	Games map[string]*Game `json:"games"`
+}
+
+// ErrorResponse represents the response structure for an error response
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// LCRGames is a map that holds LCR games
+var LCRGames = make(map[string]*lcr.LCRGame)
+
+// FirebaseCredentials represents the structure of Firebase credentials
+type FirebaseCredentials struct {
+	Type                    string `json:"type"`
+	ProjectID               string `json:"project_id"`
+	PrivateKeyID            string `json:"private_key_id"`
+	PrivateKey              string `json:"private_key"`
+	ClientEmail             string `json:"client_email"`
+	ClientID                string `json:"client_id"`
+	AuthURI                 string `json:"auth_uri"`
+	TokenURI                string `json:"token_uri"`
+	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
+	ClientX509CertURL       string `json:"client_x509_cert_url"`
+}
+
+// CreateGameResponse represents the response structure for the create game endpoint
+type CreateGameResponse struct {
+	GameID    string  `json:"gameID"`
+	LobbyCode string  `json:"lobbyCode"`
+	Creator   *Player `json:"creator"`
+}
+
+var (
+	// credentials holds the Firebase credentials
+	credentials FirebaseCredentials
+)
+
+// generateLobbyCode generates a random lobby code
 func generateLobbyCode() string {
 	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	const codeLength = 5
@@ -72,6 +123,7 @@ func generateLobbyCode() string {
 	return string(b)
 }
 
+// convertToLCRPlayers converts []*Player to []*lcr.LCRPlayer
 func convertToLCRPlayers(players []*Player) []*lcr.LCRPlayer {
 	lcrPlayers := make([]*lcr.LCRPlayer, len(players))
 	for i, player := range players {
@@ -83,6 +135,7 @@ func convertToLCRPlayers(players []*Player) []*lcr.LCRPlayer {
 	return lcrPlayers
 }
 
+// NewGame creates a new game instance
 func NewGame(players []*Player) (*Game, *lcr.LCRGame) {
 	// Initialize player chips to 3
 	for _, player := range players {
@@ -107,6 +160,7 @@ func NewGame(players []*Player) (*Game, *lcr.LCRGame) {
 	return game, lcrGame
 }
 
+// NewPlayer creates a new player instance
 func NewPlayer(name string) *Player {
 	return &Player{
 		Name:        name,
@@ -115,6 +169,7 @@ func NewPlayer(name string) *Player {
 	}
 }
 
+// Start starts the game
 func (g *Game) Start() error {
 	if len(g.Players) < 3 {
 		return fmt.Errorf("not enough players to start the game, minimum required: 3")
@@ -136,13 +191,25 @@ func (g *Game) Start() error {
 	return nil
 }
 
+// getAvailableGames retrieves the list of available games
+// @Summary Get available games
+// @Description Retrieves the list of available games from the Firebase Realtime Database
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Success 200 {object} GetAvailableGamesResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /available-games [get]
 func getAvailableGames(c *fiber.Ctx, dbClient *db.Client) error {
 	gamesRef := dbClient.NewRef("games")
 
 	var games map[string]*Game
 	if err := gamesRef.Get(context.Background(), &games); err != nil {
+		log.Printf("Failed to retrieve games from Firebase RTDB: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch games from Firebase RTDB",
+			"error": "Failed to retrieve games from Firebase RTDB",
 		})
 	}
 
@@ -153,11 +220,10 @@ func getAvailableGames(c *fiber.Ctx, dbClient *db.Client) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
-		"games": availableGames,
-	})
+	return c.JSON(GetAvailableGamesResponse{Games: availableGames})
 }
 
+// PlayTurn plays a turn in the game
 func (g *Game) PlayTurn() {
 	g.Player = g.Players[g.Turn]
 	g.Dice.Rolls = g.Player.TakeTurnWithoutInput(g) // Update to store the dice roll results
@@ -183,6 +249,7 @@ func (g *Game) PlayTurn() {
 	}
 }
 
+// TakeTurnWithoutInput simulates taking a turn without player input
 func (p *Player) TakeTurnWithoutInput(g *Game) []int {
 	numDice := p.Chips
 	if numDice > 3 {
@@ -229,6 +296,19 @@ func (d *Dice) Roll(numDice int) []int {
 	}
 	return rolls
 }
+
+// CreateGame represents the request structure for the create game endpoint
+// @Summary Create a new game
+// @Description Create a new game with the provided players
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Success 200 {object} CreateGameResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games [post]
 func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 	var players []*Player
 	if err := c.BodyParser(&players); err != nil {
@@ -296,13 +376,27 @@ func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 	// Initialize LCRGame
 	LCRGames[gameID] = lcrGame
 
-	return c.JSON(fiber.Map{
-		"gameID":    gameID,
-		"lobbyCode": game.LobbyCode,
-		"creator":   game.Creator,
+	return c.JSON(CreateGameResponse{
+		GameID:    gameID,
+		LobbyCode: game.LobbyCode,
+		Creator:   game.Creator,
 	})
 }
 
+// joinGame allows a player to join an existing game
+// @Summary Join a game
+// @Description Join an existing game with the provided lobby code
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param lobbyCode path string true "Lobby code"
+// @Success 200 {object} Game
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games/{lobbyCode}/join [post]
 func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	lobbyCode := c.Params("lobbyCode")
 
@@ -312,7 +406,7 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	results, err := query.GetOrdered(context.Background())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to query games from Firebase RTDB :( " + err.Error(),
+			"error": "Failed to query games from Firebase RTDB: " + err.Error(),
 		})
 	}
 
@@ -327,7 +421,7 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	var game Game
 	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve game from Firebase RTDB" + err.Error(),
+			"error": "Failed to retrieve game from Firebase RTDB: " + err.Error(),
 		})
 	}
 
@@ -363,8 +457,19 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	return c.JSON(game)
 }
 
-// 3XW4LgX0jMeo6mwTU9NrE0a2rYN2
-
+// addBotsToGame adds bots to the game
+// @Summary Add bots to game
+// @Description Adds a random number of bots (between 2 and 4) to the game identified by the provided lobby code in the Firebase Realtime Database
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param lobbyCode path string true "Lobby code"
+// @Success 200 {object} Game
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games/add-bots/{lobbyCode} [put]
 func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 	lobbyCode := c.Params("lobbyCode")
 
@@ -414,10 +519,20 @@ func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 	return c.JSON(game)
 }
 
+// setBotsReady sets all bots to ready in the game
+// @Summary Set bots ready
+// @Description Sets all the bots in the game identified by the provided lobby code in the Firebase Realtime Database to ready
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param lobbyCode path string true "Lobby code"
+// @Success 200 {object} Game
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games/bots-ready/{lobbyCode} [put]
 func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
-	// this function needs to take the
-	// lobby code and set all the bots to ready
-	// then return the game
 	lobbyCode := c.Params("lobbyCode")
 
 	// Find game with the given lobby code
@@ -460,6 +575,19 @@ func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
 	return c.JSON(game)
 }
 
+// takeTurn performs a player's turn in the game
+// @Summary Perform player's turn
+// @Description Takes a turn for the player in the game identified by the provided game ID in the Firebase Realtime Database
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param gameID path string true "Game ID"
+// @Success 200 {object} Game
+// @Failure 404 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Router /games/{gameID}/turn [post]
 func takeTurn(c *fiber.Ctx, dbClient *db.Client) error {
 	gameID := c.Params("gameID")
 	gameRef := dbClient.NewRef("games/" + gameID)
@@ -493,6 +621,18 @@ func takeTurn(c *fiber.Ctx, dbClient *db.Client) error {
 	})
 }
 
+// getGame retrieves the game by game ID
+// @Summary Get game by ID
+// @Description Retrieves the game based on the provided game ID from the Firebase Realtime Database
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param gameID path string true "Game ID"
+// @Success 200 {object} Game
+// @Failure 404 {object} ErrorResponse
+// @Router /games/{gameID} [get]
 func getGame(c *fiber.Ctx, dbClient *db.Client) error {
 	gameID := c.Params("gameID")
 	gameRef := dbClient.NewRef("games/" + gameID)
@@ -510,6 +650,19 @@ func getGame(c *fiber.Ctx, dbClient *db.Client) error {
 	})
 }
 
+// getGameIDByLobbyCode retrieves the game ID based on the lobby code
+// @Summary Get game ID by lobby code
+// @Description Retrieves the game ID based on the provided lobby code from the Firebase Realtime Database
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param lobbyCode path string true "Lobby code"
+// @Success 200 {string} string "OK"
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games/id/{lobbyCode} [get]
 func getGameIDByLobbyCode(c *fiber.Ctx, dbClient *db.Client) (string, error) {
 	lobbyCode := c.Params("lobbyCode")
 
@@ -530,6 +683,19 @@ func getGameIDByLobbyCode(c *fiber.Ctx, dbClient *db.Client) (string, error) {
 	return gameKey, nil
 }
 
+// setPlayerReady sets the lobby status of a player to ready
+// @Summary Set player ready status
+// @Description Set the lobby status of a player to ready
+// @Tags Games
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Param dbClient path string true "Database client"
+// @Param playerName path string true "Player name"
+// @Success 200 {object} Game
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /games/:lobbyCode/players/:playerName/ready [post]
 func setPlayerReady(c *fiber.Ctx, dbClient *db.Client) error {
 	// Parse player name and lobby code from the URL parameters
 	playerName := c.Params("playerName")
@@ -567,10 +733,19 @@ func setPlayerReady(c *fiber.Ctx, dbClient *db.Client) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
-		"game": game,
-	})
+	return c.JSON(game)
 }
+
+// AuthRequired is a middleware function that validates the Authorization header and verifies the token using Firebase admin SDK
+// @Summary Authentication required
+// @Description Middleware function that validates the Authorization header and verifies the token using Firebase admin SDK
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param c path string true "Fiber context"
+// @Success 200 {string} string "OK"
+// @Failure 401 {object} ErrorResponse
+// @Router / [get]
 func AuthRequired() func(*fiber.Ctx) error {
 	return func(c *fiber.Ctx) error {
 		// Get token from header
@@ -594,27 +769,8 @@ func AuthRequired() func(*fiber.Ctx) error {
 	}
 }
 
-var LCRGames = make(map[string]*lcr.LCRGame)
-
-type FirebaseCredentials struct {
-	Type                    string `json:"type"`
-	ProjectID               string `json:"project_id"`
-	PrivateKeyID            string `json:"private_key_id"`
-	PrivateKey              string `json:"private_key"`
-	ClientEmail             string `json:"client_email"`
-	ClientID                string `json:"client_id"`
-	AuthURI                 string `json:"auth_uri"`
-	TokenURI                string `json:"token_uri"`
-	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
-	ClientX509CertURL       string `json:"client_x509_cert_url"`
-}
-
-var (
-	credentials FirebaseCredentials
-)
-
 func main() {
-	// Load environment variables from .env file
+	// Load environment variables from .env file || Keep commented out for Railway deployment
 	// err := godotenv.Load()
 	// if err != nil {
 	// 	log.Fatalf("Failed to load environment variables: %v", err)
@@ -676,6 +832,7 @@ func main() {
 
 	app := fiber.New()
 	app.Static("/", "static")
+	app.Get("/swagger/*", swagger.HandlerDefault) // default
 
 	// Allow all origins and methods
 	app.Use(cors.New(cors.Config{

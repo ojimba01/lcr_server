@@ -1,0 +1,710 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "LCR Game API",
+        "contact": {}
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "description": "Middleware function that validates the Authorization header and verifies the token using Firebase admin SDK",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Authentication required",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/available-games": {
+            "get": {
+                "description": "Retrieves the list of available games from the Firebase Realtime Database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Get available games",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetAvailableGamesResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games": {
+            "post": {
+                "description": "Create a new game with the provided players",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Create a new game",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateGameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/:lobbyCode/players/:playerName/ready": {
+            "post": {
+                "description": "Set the lobby status of a player to ready",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Set player ready status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Player name",
+                        "name": "playerName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/add-bots/{lobbyCode}": {
+            "put": {
+                "description": "Adds a random number of bots (between 2 and 4) to the game identified by the provided lobby code in the Firebase Realtime Database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Add bots to game",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lobby code",
+                        "name": "lobbyCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/bots-ready/{lobbyCode}": {
+            "put": {
+                "description": "Sets all the bots in the game identified by the provided lobby code in the Firebase Realtime Database to ready",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Set bots ready",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lobby code",
+                        "name": "lobbyCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/id/{lobbyCode}": {
+            "get": {
+                "description": "Retrieves the game ID based on the provided lobby code from the Firebase Realtime Database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Get game ID by lobby code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lobby code",
+                        "name": "lobbyCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{gameID}": {
+            "get": {
+                "description": "Retrieves the game based on the provided game ID from the Firebase Realtime Database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Get game by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Game ID",
+                        "name": "gameID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{gameID}/turn": {
+            "post": {
+                "description": "Takes a turn for the player in the game identified by the provided game ID in the Firebase Realtime Database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Perform player's turn",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Game ID",
+                        "name": "gameID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{lobbyCode}/join": {
+            "post": {
+                "description": "Join an existing game with the provided lobby code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Games"
+                ],
+                "summary": "Join a game",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fiber context",
+                        "name": "c",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Database client",
+                        "name": "dbClient",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lobby code",
+                        "name": "lobbyCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Game"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "lcr.LCRDice": {
+            "type": "object",
+            "properties": {
+                "rolls": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sides": {
+                    "type": "integer"
+                }
+            }
+        },
+        "lcr.LCRGame": {
+            "type": "object",
+            "properties": {
+                "dice": {
+                    "$ref": "#/definitions/lcr.LCRDice"
+                },
+                "gameOver": {
+                    "type": "boolean"
+                },
+                "player": {
+                    "$ref": "#/definitions/lcr.LCRPlayer"
+                },
+                "players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/lcr.LCRPlayer"
+                    }
+                },
+                "pot": {
+                    "type": "integer"
+                },
+                "turn": {
+                    "type": "integer"
+                },
+                "winner": {
+                    "$ref": "#/definitions/lcr.LCRPlayer"
+                }
+            }
+        },
+        "lcr.LCRPlayer": {
+            "type": "object",
+            "properties": {
+                "chips": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.CreateGameResponse": {
+            "type": "object",
+            "properties": {
+                "creator": {
+                    "$ref": "#/definitions/main.Player"
+                },
+                "gameID": {
+                    "type": "string"
+                },
+                "lobbyCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.Dice": {
+            "type": "object",
+            "properties": {
+                "Rolls": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "Sides": {
+                    "type": "integer"
+                }
+            }
+        },
+        "main.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.Game": {
+            "type": "object",
+            "properties": {
+                "Creator": {
+                    "$ref": "#/definitions/main.Player"
+                },
+                "Dice": {
+                    "$ref": "#/definitions/main.Dice"
+                },
+                "GameOver": {
+                    "type": "boolean"
+                },
+                "LCRGame": {
+                    "$ref": "#/definitions/lcr.LCRGame"
+                },
+                "LobbyCode": {
+                    "type": "string"
+                },
+                "Player": {
+                    "$ref": "#/definitions/main.Player"
+                },
+                "Players": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.Player"
+                    }
+                },
+                "Pot": {
+                    "type": "integer"
+                },
+                "Turn": {
+                    "type": "integer"
+                },
+                "Winner": {
+                    "$ref": "#/definitions/main.Player"
+                },
+                "gameID": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.GetAvailableGamesResponse": {
+            "type": "object",
+            "properties": {
+                "games": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/main.Game"
+                    }
+                }
+            }
+        },
+        "main.Player": {
+            "type": "object",
+            "properties": {
+                "Chips": {
+                    "type": "integer"
+                },
+                "LobbyStatus": {
+                    "type": "boolean"
+                },
+                "Name": {
+                    "type": "string"
+                },
+                "UserID": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

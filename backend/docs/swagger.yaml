@@ -1,0 +1,478 @@
+definitions:
+  lcr.LCRDice:
+    properties:
+      rolls:
+        items:
+          type: integer
+        type: array
+      sides:
+        type: integer
+    type: object
+  lcr.LCRGame:
+    properties:
+      dice:
+        $ref: '#/definitions/lcr.LCRDice'
+      gameOver:
+        type: boolean
+      player:
+        $ref: '#/definitions/lcr.LCRPlayer'
+      players:
+        items:
+          $ref: '#/definitions/lcr.LCRPlayer'
+        type: array
+      pot:
+        type: integer
+      turn:
+        type: integer
+      winner:
+        $ref: '#/definitions/lcr.LCRPlayer'
+    type: object
+  lcr.LCRPlayer:
+    properties:
+      chips:
+        type: integer
+      name:
+        type: string
+    type: object
+  main.CreateGameResponse:
+    properties:
+      creator:
+        $ref: '#/definitions/main.Player'
+      gameID:
+        type: string
+      lobbyCode:
+        type: string
+    type: object
+  main.Dice:
+    properties:
+      Rolls:
+        items:
+          type: integer
+        type: array
+      Sides:
+        type: integer
+    type: object
+  main.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  main.Game:
+    properties:
+      Creator:
+        $ref: '#/definitions/main.Player'
+      Dice:
+        $ref: '#/definitions/main.Dice'
+      GameOver:
+        type: boolean
+      LCRGame:
+        $ref: '#/definitions/lcr.LCRGame'
+      LobbyCode:
+        type: string
+      Player:
+        $ref: '#/definitions/main.Player'
+      Players:
+        items:
+          $ref: '#/definitions/main.Player'
+        type: array
+      Pot:
+        type: integer
+      Turn:
+        type: integer
+      Winner:
+        $ref: '#/definitions/main.Player'
+      gameID:
+        type: string
+    type: object
+  main.GetAvailableGamesResponse:
+    properties:
+      games:
+        additionalProperties:
+          $ref: '#/definitions/main.Game'
+        type: object
+    type: object
+  main.Player:
+    properties:
+      Chips:
+        type: integer
+      LobbyStatus:
+        type: boolean
+      Name:
+        type: string
+      UserID:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: LCR Game API
+paths:
+  /:
+    get:
+      consumes:
+      - application/json
+      description: Middleware function that validates the Authorization header and
+        verifies the token using Firebase admin SDK
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Authentication required
+      tags:
+      - Authentication
+  /available-games:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the list of available games from the Firebase Realtime
+        Database
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetAvailableGamesResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get available games
+      tags:
+      - Games
+  /games:
+    post:
+      consumes:
+      - application/json
+      description: Create a new game with the provided players
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.CreateGameResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Create a new game
+      tags:
+      - Games
+  /games/:lobbyCode/players/:playerName/ready:
+    post:
+      consumes:
+      - application/json
+      description: Set the lobby status of a player to ready
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Player name
+        in: path
+        name: playerName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Set player ready status
+      tags:
+      - Games
+  /games/{gameID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the game based on the provided game ID from the Firebase
+        Realtime Database
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Game ID
+        in: path
+        name: gameID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get game by ID
+      tags:
+      - Games
+  /games/{gameID}/turn:
+    post:
+      consumes:
+      - application/json
+      description: Takes a turn for the player in the game identified by the provided
+        game ID in the Firebase Realtime Database
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Game ID
+        in: path
+        name: gameID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Perform player's turn
+      tags:
+      - Games
+  /games/{lobbyCode}/join:
+    post:
+      consumes:
+      - application/json
+      description: Join an existing game with the provided lobby code
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Lobby code
+        in: path
+        name: lobbyCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Join a game
+      tags:
+      - Games
+  /games/add-bots/{lobbyCode}:
+    put:
+      consumes:
+      - application/json
+      description: Adds a random number of bots (between 2 and 4) to the game identified
+        by the provided lobby code in the Firebase Realtime Database
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Lobby code
+        in: path
+        name: lobbyCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Add bots to game
+      tags:
+      - Games
+  /games/bots-ready/{lobbyCode}:
+    put:
+      consumes:
+      - application/json
+      description: Sets all the bots in the game identified by the provided lobby
+        code in the Firebase Realtime Database to ready
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Lobby code
+        in: path
+        name: lobbyCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Game'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Set bots ready
+      tags:
+      - Games
+  /games/id/{lobbyCode}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the game ID based on the provided lobby code from the
+        Firebase Realtime Database
+      parameters:
+      - description: Fiber context
+        in: path
+        name: c
+        required: true
+        type: string
+      - description: Database client
+        in: path
+        name: dbClient
+        required: true
+        type: string
+      - description: Lobby code
+        in: path
+        name: lobbyCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get game ID by lobby code
+      tags:
+      - Games
+swagger: "2.0"

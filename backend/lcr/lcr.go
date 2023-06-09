@@ -128,3 +128,5 @@ func (d *LCRDice) Roll(numDice int) []int {
 func (d *LCRDice) GetRolls() []int {
 	return d.Rolls
 }
+
+// 3XW4LgX0jMeo6mwTU9NrE0a2rYN2
