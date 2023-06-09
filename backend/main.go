@@ -398,7 +398,7 @@ func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 
 	// Add the new bots to the game
 	for i := 0; i < numBots; i++ {
-		botName := fmt.Sprintf("Bot %d", len(game.Players)+1)
+		botName := fmt.Sprintf("Bot %d", len(game.Players))
 		bot := NewPlayer(botName)
 		bot.UserID = "3XW4LgX0jMeo6mwTU9NrE0a2rYN2"
 		game.Players = append(game.Players, bot)
