@@ -16,7 +16,7 @@ import (
 	"math/rand"
 	"time"
 
-	// "github.com/joho/godotenv" // Keep commented out for Railway deployment
+	"github.com/joho/godotenv" // Keep commented out for Railway deployment
 
 	_ "backend/docs"
 
@@ -77,8 +77,17 @@ type GetAvailableGamesResponse struct {
 }
 
 // ErrorResponse represents the response structure for an error response
+//
+//	type ErrorResponse struct {
+//		Error string `json:"error"`
+//	}
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Message error `json:"error"`
+}
+
+// create a method that implements the error interface
+func (e ErrorResponse) Error() string {
+	return e.Message.Error()
 }
 
 // LCRGames is a map that holds LCR games
@@ -313,15 +322,15 @@ func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 	var players []*Player
 	if err := c.BodyParser(&players); err != nil {
 		log.Printf("Error parsing player data: %s", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid player data",
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: fmt.Errorf("invalid player data: %s", err),
 		})
 	}
 
 	if players == nil {
 		log.Println("Player data is empty")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Player data is empty",
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: fmt.Errorf("Player data is empty"),
 		})
 	}
 
@@ -334,8 +343,8 @@ func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 		} else {
 			// Handle the case where the user ID is not a string
 			log.Println("Invalid user ID")
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Invalid user ID",
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: fmt.Errorf("invalid user ID"),
 			})
 		}
 	}
@@ -358,8 +367,8 @@ func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 	gameRef, err := dbClient.NewRef("games").Push(context.Background(), nil)
 	if err != nil {
 		log.Printf("Failed to create game reference in Firebase RTDB: %s", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to create game reference in Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to create game reference in Firebase RTDB: %s", err),
 		})
 	}
 
@@ -368,8 +377,8 @@ func createGame(c *fiber.Ctx, dbClient *db.Client) error {
 
 	if err := gameRef.Set(context.Background(), game); err != nil {
 		log.Printf("Failed to save game to Firebase RTDB: %s", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save game to Firebase RTDB: %s", err),
 		})
 	}
 
@@ -405,14 +414,14 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
 	results, err := query.GetOrdered(context.Background())
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to query games from Firebase RTDB: " + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to query games from Firebase RTDB: %s", err),
 		})
 	}
 
 	if len(results) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("Game not found"),
 		})
 	}
 
@@ -420,8 +429,8 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 	gameSnapshot := gamesRef.Child(gameKey)
 	var game Game
 	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve game from Firebase RTDB: " + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to retrieve game from Firebase RTDB: %s", err),
 		})
 	}
 
@@ -429,13 +438,13 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 		Name string `json:"Name"`
 	}
 	if err := c.BodyParser(&playerData); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid player data",
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: fmt.Errorf("invalid player data: %s", err),
 		})
 	}
 	if playerData.Name == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Player name is empty",
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Message: fmt.Errorf("Player name is empty"),
 		})
 	}
 
@@ -449,8 +458,8 @@ func joinGame(c *fiber.Ctx, dbClient *db.Client) error {
 
 	// Save the game with the new player back to Firebase RTDB
 	if err := gameSnapshot.Set(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save updated game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save updated game to Firebase RTDB: %s", err),
 		})
 	}
 
@@ -481,14 +490,14 @@ func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
 	results, err := query.GetOrdered(context.Background())
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to query games from Firebase RTDB :( " + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to query games from Firebase RTDB :( "),
 		})
 	}
 
 	if len(results) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("Game not found"),
 		})
 	}
 
@@ -496,8 +505,8 @@ func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 	gameSnapshot := gamesRef.Child(gameKey)
 	var game Game
 	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve game from Firebase RTDB" + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to retrieve game from Firebase RTDB"),
 		})
 	}
 
@@ -511,8 +520,8 @@ func addBotsToGame(c *fiber.Ctx, dbClient *db.Client) error {
 
 	// Save the game with the new bots back to Firebase RTDB
 	if err := gameSnapshot.Set(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save updated game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save updated game to Firebase RTDB"),
 		})
 	}
 
@@ -540,14 +549,14 @@ func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
 	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
 	results, err := query.GetOrdered(context.Background())
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to query games from Firebase RTDB :( " + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to query games from Firebase RTDB :( "),
 		})
 	}
 
 	if len(results) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("game not found"),
 		})
 	}
 
@@ -555,8 +564,8 @@ func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
 	gameSnapshot := gamesRef.Child(gameKey)
 	var game Game
 	if err := gameSnapshot.Get(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to retrieve game from Firebase RTDB" + err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to retrieve game from Firebase RTDB"),
 		})
 	}
 
@@ -567,8 +576,8 @@ func setBotsReady(c *fiber.Ctx, dbClient *db.Client) error {
 
 	// Save the game with the new bots back to Firebase RTDB
 	if err := gameSnapshot.Set(context.Background(), &game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save updated game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save updated game to Firebase RTDB"),
 		})
 	}
 
@@ -595,14 +604,14 @@ func takeTurn(c *fiber.Ctx, dbClient *db.Client) error {
 	// Get the game from the Firebase RTDB
 	game := &Game{}
 	if err := gameRef.Get(context.Background(), game); err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("Game not found"),
 		})
 	}
 
 	if game.GameOver {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-			"error": "The game has already ended",
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
+			Message: fmt.Errorf("the game has already ended"),
 		})
 	}
 
@@ -611,8 +620,8 @@ func takeTurn(c *fiber.Ctx, dbClient *db.Client) error {
 	// Update the game in the Firebase RTDB
 	err := gameRef.Set(context.Background(), game)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save game to Firebase RTDB: %s", err),
 		})
 	}
 
@@ -640,9 +649,9 @@ func getGame(c *fiber.Ctx, dbClient *db.Client) error {
 	// Get the game from the Firebase RTDB
 	game := &Game{}
 	if err := gameRef.Get(context.Background(), game); err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
-		})
+		return ErrorResponse{
+			Message: fmt.Errorf("game not found"),
+		}
 	}
 
 	return c.JSON(fiber.Map{
@@ -671,11 +680,15 @@ func getGameIDByLobbyCode(c *fiber.Ctx, dbClient *db.Client) (string, error) {
 	query := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).LimitToFirst(1)
 	results, err := query.GetOrdered(context.Background())
 	if err != nil {
-		return "", err
+		return "", ErrorResponse{
+			Message: fmt.Errorf("failed to query games from Firebase RTDB: %s", err),
+		}
 	}
 
 	if len(results) == 0 {
-		return "", fmt.Errorf("Game not found")
+		return "", ErrorResponse{
+			Message: fmt.Errorf("Game not found"),
+		}
 	}
 
 	gameKey := results[0].Key()
@@ -703,8 +716,8 @@ func setPlayerReady(c *fiber.Ctx, dbClient *db.Client) error {
 	// Find the game with the given lobby code
 	gameID, err := getGameIDByLobbyCode(c, dbClient)
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("game not found"),
 		})
 	}
 
@@ -713,8 +726,8 @@ func setPlayerReady(c *fiber.Ctx, dbClient *db.Client) error {
 	// Get the game from the Firebase RTDB
 	game := &Game{}
 	if err := gameRef.Get(context.Background(), game); err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Game not found",
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Message: fmt.Errorf("game not found"),
 		})
 	}
 
@@ -728,8 +741,8 @@ func setPlayerReady(c *fiber.Ctx, dbClient *db.Client) error {
 
 	// Update the game in the Firebase RTDB
 	if err := gameRef.Set(context.Background(), game); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to save game to Firebase RTDB",
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Message: fmt.Errorf("failed to save game to Firebase RTDB"),
 		})
 	}
 
@@ -756,8 +769,8 @@ func AuthRequired() func(*fiber.Ctx) error {
 		// Verify the token using your Firebase admin SDK
 		tokenInfo, err := client.VerifyIDToken(context.Background(), token)
 		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Unauthorized",
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+				Message: fmt.Errorf("Unauthorized"),
 			})
 		}
 
@@ -771,10 +784,10 @@ func AuthRequired() func(*fiber.Ctx) error {
 
 func main() {
 	// Load environment variables from .env file || Keep commented out for Railway deployment
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatalf("Failed to load environment variables: %v", err)
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Failed to load environment variables: %v", err)
+	}
 
 	// Connect to the PostgreSQL database
 	// Use environment variables to get postgress password.
@@ -847,7 +860,12 @@ func main() {
 		err := getGame(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("GET request for game:", c.Params("gameID"), "completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Get("/available-games", AuthRequired(), func(c *fiber.Ctx) error {
@@ -856,7 +874,12 @@ func main() {
 		err := getAvailableGames(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("GET request for available games completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Post("/games", AuthRequired(), func(c *fiber.Ctx) error {
@@ -866,7 +889,12 @@ func main() {
 		err := createGame(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for creating a game completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Post("/games/:lobbyCode/join", AuthRequired(), func(c *fiber.Ctx) error {
@@ -878,15 +906,15 @@ func main() {
 		fmt.Println("POST request for joining a game:", lobbyCode, "completed in", elapsed)
 
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to join the game. " + err.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: fmt.Errorf("Failed to join the game: %v", err),
 			})
 		}
 
 		gameID, err := getGameIDByLobbyCode(c, dbClient)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve the game ID. " + err.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: fmt.Errorf("Failed to retrieve the game ID: %v", err),
 			})
 		}
 
@@ -915,8 +943,8 @@ func main() {
 		fmt.Println("GET request for gameID:", c.Params("lobbyCode"), "completed in", elapsed)
 
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve the game ID. " + err.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: fmt.Errorf("Failed to retrieve the game ID: %v", err),
 			})
 		}
 
@@ -931,7 +959,12 @@ func main() {
 		err := setPlayerReady(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for setting player ready:", c.Params("playerName"), "in lobby:", c.Params("lobbyCode"), "completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Post("/games/:gameID/turn", AuthRequired(), func(c *fiber.Ctx) error {
@@ -940,7 +973,12 @@ func main() {
 		err := takeTurn(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for taking a turn in game:", c.Params("gameID"), "completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Post("/games/:lobbyCode/addBots", func(c *fiber.Ctx) error {
@@ -949,7 +987,12 @@ func main() {
 		err := addBotsToGame(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for adding bots to game:", c.Params("lobbyCode"), "completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	// create the set bots to ready endpoint
@@ -959,7 +1002,12 @@ func main() {
 		err := setBotsReady(c, dbClient)
 		elapsed := time.Since(start)
 		fmt.Println("POST request for setting bots to ready in game:", c.Params("lobbyCode"), "completed in", elapsed)
-		return err
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: err,
+			})
+		}
+		return nil
 	})
 
 	app.Post("/games/:lobbyCode/start", AuthRequired(), func(c *fiber.Ctx) error {
@@ -971,22 +1019,22 @@ func main() {
 		var game *Game
 		gamesRef := dbClient.NewRef("games")
 		if err := gamesRef.OrderByChild("LobbyCode").EqualTo(lobbyCode).Get(context.Background(), &game); err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"error": "Game not found",
+			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+				Message: fmt.Errorf("Game not found"),
 			})
 		}
 
 		if err := game.Start(); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": err.Error(),
+			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+				Message: err,
 			})
 		}
 
 		// Update the game state in the Firebase RTDB
 		gameRef := gamesRef.Child(game.LobbyCode)
 		if err := gameRef.Set(context.Background(), game); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to save game to Firebase RTDB",
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Message: fmt.Errorf("Failed to save game to Firebase RTDB"),
 			})
 		}
 
