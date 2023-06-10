@@ -16,7 +16,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/joho/godotenv" // Keep commented out for Railway deployment
+	// "github.com/joho/godotenv" // Keep commented out for Railway deployment
 
 	_ "backend/docs"
 
@@ -31,7 +31,15 @@ import (
 	"google.golang.org/api/option"
 )
 
-// @Description LCR Game API
+// @title LCR API Documentation
+// @version 1.0
+// @description This is the API documentation for the LCR API. When you click on any endpoint, you can try out the API's functionality.
+// @termsOfService http://swagger.io/terms/
+// @contact.name Olayinka Jimba
+// @contact.email ojimba01@gmail.com
+
+// @host localhost:3000
+// @BasePath /
 
 // client represents a Firebase auth client
 var client *auth.Client
@@ -76,16 +84,12 @@ type GetAvailableGamesResponse struct {
 	Games map[string]*Game `json:"games"`
 }
 
-// ErrorResponse represents the response structure for an error response
-//
-//	type ErrorResponse struct {
-//		Error string `json:"error"`
-//	}
+// ErrorResponse represents the response structure for error responses
 type ErrorResponse struct {
 	Message error `json:"error"`
 }
 
-// create a method that implements the error interface
+// A method that implements the error interface
 func (e ErrorResponse) Error() string {
 	return e.Message.Error()
 }
@@ -784,10 +788,10 @@ func AuthRequired() func(*fiber.Ctx) error {
 
 func main() {
 	// Load environment variables from .env file || Keep commented out for Railway deployment
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Failed to load environment variables: %v", err)
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatalf("Failed to load environment variables: %v", err)
+	// }
 
 	// Connect to the PostgreSQL database
 	// Use environment variables to get postgress password.
@@ -1034,7 +1038,7 @@ func main() {
 		gameRef := gamesRef.Child(game.LobbyCode)
 		if err := gameRef.Set(context.Background(), game); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-				Message: fmt.Errorf("Failed to save game to Firebase RTDB"),
+				Message: fmt.Errorf("failed to save game to Firebase RTDB"),
 			})
 		}
 

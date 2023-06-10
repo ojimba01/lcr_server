@@ -1,9 +1,17 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "LCR Game API",
-        "contact": {}
+        "description": "This is the API documentation for the LCR API. When you click on any endpoint, you can try out the API's functionality.",
+        "title": "LCR API Documentation",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "Olayinka Jimba",
+            "email": "ojimba01@gmail.com"
+        },
+        "version": "1.0"
     },
+    "host": "localhost:3000",
+    "basePath": "/",
     "paths": {
         "/": {
             "get": {
