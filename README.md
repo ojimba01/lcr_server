@@ -10,12 +10,19 @@ This repository contains the backend code for the LCR_Server project.
 
 The backend project consists of the following main directories and files:
 
-- `docs`: This directory contains the documentation for the backend code.
-- `lcr`: This directory contains the core logic of the server.
+- `controllers`: This directory contains the controllers for the server.
+- `db`: This directory contains the database related files.
+- `docs`: This directory contains the compiled swagger documentation for the backend code.
+- `lcr`: This directory contains the core logic of the LCR game.
+- `model`: This directory contains the data models.
+- `responses`: This directory contains response formatting.
+- `routes`: This directory contains route definitions.
 - `static`: This directory contains static files that the server might need to serve.
-- `backend`: This directory contains additional backend resources.
+- `util`: This directory contains utility functions and structures.
+- `backend`: This is the executeable produced from compiling the project.
 - `go.mod` & `go.sum`: These files are used by Go's dependency management system.
 - `main.go`: This is the main entry point for the GoFiber server.
+
 
 ## Local Development
 
