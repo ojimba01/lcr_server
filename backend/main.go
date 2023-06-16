@@ -71,7 +71,7 @@ func main() {
 	routes.NotFoundRoute(app)
 	routes.StaticRoutes(app)
 
-	if err := app.Listen(":3000"); err != nil {
+	if err := app.Listen("0.0.0.0:3000"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
