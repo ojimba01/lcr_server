@@ -69,6 +69,7 @@ func main() {
 	routes.GameRoutes(app)
 	routes.SwaggerRoutes(app)
 	routes.NotFoundRoute(app)
+	routes.StaticRoutes(app)
 
 	if err := app.Listen(":3000"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
