@@ -37,7 +37,8 @@ git clone https://github.com/ojimba01/lcr_server.git
 ```
 
 3. Navigate into the project directory:
-(Make sure you have a .env file configured for postgress in the lcr_server/backend directory)
+
+(*Make sure you have a .env file configured for PostgreSQL in the lcr_server/backend directory*)
 
 ```bash
 cd lcr_server/cmd
@@ -58,24 +59,20 @@ cd lcr_server/cmd
 git clone https://github.com/ojimba01/lcr_server.git
 ```
 
-3. Navigate into the project directory and create a .env file:
+3. Navigate into the project directory:
 
 ```bash
 cd lcr_server/cmd
 ```
-4.  cd lcr_server/cmd
+
+4. Build and run Docker container:
 
 ```bash
 ./docker-start.sh
 ```
-5. Build and run Docker container:
+5. Enter password for the password for a remote PostgreSQL DB:
 
-```bash
-./docker-start.sh
-```
-5. Enter password for the password for a remote Postgress DB:
-
-*this is neccessary to gain access to the firebase RTDB*
+(*this is neccessary to gain access to the firebase RTDB*)
 
 ```bash
 Enter your POSTGRES_PASSWORD:[PASSWORD]
