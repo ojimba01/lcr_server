@@ -43,7 +43,7 @@ func Init() {
 		log.Fatalf("Failed to get POSTGRES_PASSWORD environment variable")
 	}
 
-	psqlInfo := fmt.Sprintf("postgresql://postgres:%s@containers-us-west-111.railway.app:6862/railway", postgresPassword)
+	psqlInfo := fmt.Sprintf("postgresql://postgres:%s@roundhouse.proxy.rlwy.net:20318/railway", postgresPassword)
 	var err error
 	PgDb, err = sql.Open("postgres", psqlInfo)
 	if err != nil {
@@ -51,7 +51,7 @@ func Init() {
 	}
 
 	var jsonVal []byte
-	err = PgDb.QueryRow("SELECT firebase FROM credentials").Scan(&jsonVal)
+	err = PgDb.QueryRow("SELECT credentials FROM firebase").Scan(&jsonVal)
 	if err != nil {
 		log.Fatalf("Failed to retrieve Firebase credentials: %v", err)
 	}

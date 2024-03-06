@@ -25,5 +25,5 @@ echo "Hope you enjoyed LCR!"
 
 # or
 
-# sudo chmod +x local-start.sh
-# sudo ./local-start.sh
+# sudo chmod +x docker-start.sh
+# sudo ./docker-start.sh
